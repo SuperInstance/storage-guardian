@@ -61,6 +61,15 @@ CHANGELOG.md               — Version history
 CONTRIBUTING.md            — Contribution guide
 ```
 
+## Round 4 — Production Hardening Pass (2026-07-11)
+
+Baseline verified on branch `production-round4-2026-07-11`:
+- TypeScript strict typecheck: clean
+- Build (`tsc`): clean
+- Jest suite: 39/39 passing
+
+See commits on this branch for fixes applied this round.
+
 ## Known Limitations
 
 - S3 provider requires `@aws-sdk/client-s3` as peer dependency
