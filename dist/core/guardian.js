@@ -83,35 +83,6 @@ class StorageGuardian {
         const data = typeof content === 'string' ? Buffer.from(content) : content;
         const contentHash = (0, utils_1.hashContent)(data);
         const entryId = opts.id ?? (0, utils_1.generateId)();
-        const existingIds = this.hashIndex.get(contentHash);
-        if (existingIds && existingIds.length > 0) {
-            const existing = this.entries.get(existingIds[0]);
-            if (existing) {
-                const entry = {
-                    id: entryId,
-                    contentHash,
-                    sizeBytes: data.length,
-                    mimeType: opts.mimeType,
-                    name: opts.name,
-                    tags: opts.tags,
-                    createdAt: Date.now(),
-                    accessedAt: Date.now(),
-                    refCount: 1,
-                };
-                this.entries.set(entryId, entry);
-                this.hashIndex.get(contentHash).push(entryId);
-                this.alerts.push({
-                    type: 'duplicate',
-                    severity: 'info',
-                    message: `Duplicate content detected: "${opts.name}" matches "${existing.name}" (${(0, utils_1.formatBytes)(data.length)})`,
-                    entryId,
-                    entryName: opts.name,
-                    details: { contentHash, existingId: existing.id, sizeBytes: data.length },
-                    timestamp: Date.now(),
-                });
-                return entry;
-            }
-        }
         const entry = {
             id: entryId,
             contentHash,
@@ -128,6 +99,25 @@ class StorageGuardian {
             this.hashIndex.set(contentHash, []);
         }
         this.hashIndex.get(contentHash).push(entryId);
+        // Duplicate detection: if this content hash already existed, alert.
+        const existingIds = this.hashIndex.get(contentHash);
+        if (existingIds.length > 1) {
+            const existing = this.entries.get(existingIds[0]);
+            if (existing && existing.id !== entryId) {
+                this.alerts.push({
+                    type: 'duplicate',
+                    severity: 'info',
+                    message: `Duplicate content detected: "${opts.name}" matches "${existing.name}" (${(0, utils_1.formatBytes)(data.length)})`,
+                    entryId,
+                    entryName: opts.name,
+                    details: { contentHash, existingId: existing.id, sizeBytes: data.length },
+                    timestamp: Date.now(),
+                });
+            }
+        }
+        // Budget: oversized-entry check (applies to EVERY entry, including
+        // duplicates — a duplicate still occupies an entry slot and counts
+        // toward total storage, so it must be flagged consistently).
         for (const budget of this.budgets) {
             if (budget.maxSingleEntryBytes && entry.sizeBytes > budget.maxSingleEntryBytes) {
                 this.alerts.push({
