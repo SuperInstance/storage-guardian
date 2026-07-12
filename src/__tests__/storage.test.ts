@@ -9,14 +9,12 @@ import {
   exportMarkdown,
   evaluateBuiltInRules,
   duplicateRatioThreshold,
-  budgetUsageAlert,
   MemoryPersistence,
   saveScan,
   analyzeTrend,
   compareReports,
   generateId,
 } from '../index';
-import { ScanRecord } from '../index';
 
 // ---------------------------------------------------------------------------
 // Core: Adding & Removing
@@ -93,7 +91,7 @@ describe('duplicate detection', () => {
 
   it('picks oldest entry as canonical', () => {
     const sg = new StorageGuardian();
-    const first = sg.add('shared', { name: 'first.txt', id: 'first' });
+    sg.add('shared', { name: 'first.txt', id: 'first' });
     sg.add('shared', { name: 'second.txt', id: 'second' });
 
     const dupes = sg.findDuplicates();
@@ -263,16 +261,16 @@ describe('querying', () => {
     expect(docs).toHaveLength(2);
   });
 
-  it('touches entries to update accessedAt', () => {
+  it('touches entries to update accessedAt', async () => {
     const sg = new StorageGuardian();
     const entry = sg.add('data', { name: 'test.txt' });
     const originalAccess = entry.accessedAt;
 
-    const start = Date.now();
-    while (Date.now() === start) {}
+    // Ensure at least 1ms elapses so Date.now() advances deterministically.
+    await new Promise((resolve) => setTimeout(resolve, 2));
 
-    sg.touch(entry.id);
-    expect(entry.accessedAt).toBeGreaterThanOrEqual(originalAccess);
+    expect(sg.touch(entry.id)).toBe(true);
+    expect(entry.accessedAt).toBeGreaterThan(originalAccess);
   });
 });
 

@@ -45,7 +45,7 @@ export class S3Provider implements StorageProvider {
 
       this.client = new S3Client(config);
       return this.client;
-    } catch (err: any) {
+    } catch {
       throw new Error(
         'S3 provider requires @aws-sdk/client-s3. Install it with: npm install @aws-sdk/client-s3',
       );

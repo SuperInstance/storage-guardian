@@ -1,6 +1,5 @@
 import {
   StorageGuardian,
-  formatBytes,
   formatDate,
   detectMimeType,
   recordToDataPoint,
