@@ -9,14 +9,12 @@ import {
   exportMarkdown,
   evaluateBuiltInRules,
   duplicateRatioThreshold,
-  budgetUsageAlert,
   MemoryPersistence,
   saveScan,
   analyzeTrend,
   compareReports,
   generateId,
 } from '../index';
-import { ScanRecord } from '../index';
 
 // ---------------------------------------------------------------------------
 // Core: Adding & Removing
@@ -93,7 +91,7 @@ describe('duplicate detection', () => {
 
   it('picks oldest entry as canonical', () => {
     const sg = new StorageGuardian();
-    const first = sg.add('shared', { name: 'first.txt', id: 'first' });
+    sg.add('shared', { name: 'first.txt', id: 'first' });
     sg.add('shared', { name: 'second.txt', id: 'second' });
 
     const dupes = sg.findDuplicates();
@@ -171,6 +169,25 @@ describe('budget enforcement', () => {
     expect(oversized!.message).toContain('big.bin');
   });
 
+  it('flags oversized limit for duplicate content too', () => {
+    // Regression: add() used to skip the maxSingleEntryBytes check when the
+    // content already existed (early return on the duplicate path), so an
+    // oversized duplicate produced no oversized alert.
+    const sg = new StorageGuardian();
+    sg.addBudget({ maxTotalBytes: Infinity, maxSingleEntryBytes: 50 });
+
+    sg.add(Buffer.alloc(100), { name: 'big-first.bin' });
+    sg.add(Buffer.alloc(100), { name: 'big-dup.bin' }); // same content -> duplicate
+
+    const alerts = sg.getAlerts();
+    const oversized = alerts.filter((a) => a.type === 'oversized');
+    // Both the unique and the duplicate oversized entries must be flagged.
+    expect(oversized).toHaveLength(2);
+    expect(oversized.some((a) => a.message.includes('big-dup.bin'))).toBe(true);
+    // The duplicate alert is still emitted alongside the oversized alert.
+    expect(alerts.some((a) => a.type === 'duplicate')).toBe(true);
+  });
+
   it('passes when within budget', () => {
     const sg = new StorageGuardian();
     sg.setBudget({ maxTotalBytes: 1000, maxEntries: 10 });
@@ -244,16 +261,16 @@ describe('querying', () => {
     expect(docs).toHaveLength(2);
   });
 
-  it('touches entries to update accessedAt', () => {
+  it('touches entries to update accessedAt', async () => {
     const sg = new StorageGuardian();
     const entry = sg.add('data', { name: 'test.txt' });
     const originalAccess = entry.accessedAt;
 
-    const start = Date.now();
-    while (Date.now() === start) {}
+    // Ensure at least 1ms elapses so Date.now() advances deterministically.
+    await new Promise((resolve) => setTimeout(resolve, 2));
 
-    sg.touch(entry.id);
-    expect(entry.accessedAt).toBeGreaterThanOrEqual(originalAccess);
+    expect(sg.touch(entry.id)).toBe(true);
+    expect(entry.accessedAt).toBeGreaterThan(originalAccess);
   });
 });
 

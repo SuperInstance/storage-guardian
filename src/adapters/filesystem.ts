@@ -6,15 +6,15 @@
 
 import { readdir, stat, lstat, readFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { join, extname, basename, relative } from 'path';
-import { createHash, Hash } from 'node:crypto';
+import { join, relative } from 'path';
+import { createHash } from 'node:crypto';
 import {
   StorageProvider,
   EntryMeta,
   FileSystemProviderOptions,
   StorageEntry,
 } from '../core/types';
-import { hashContent, generateId, isExcluded, detectMimeType } from '../core/utils';
+import { generateId, isExcluded, detectMimeType } from '../core/utils';
 
 const DEFAULT_EXCLUDE_PATTERNS = [
   'node_modules',

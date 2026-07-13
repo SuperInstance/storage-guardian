@@ -5,7 +5,6 @@
  * budget enforcement, alerting, and pluggable storage adapters.
  */
 
-import { createHash } from 'node:crypto';
 import {
   StorageEntry,
   DuplicateGroup,
@@ -112,38 +111,6 @@ export class StorageGuardian {
     const contentHash = hashContent(data);
     const entryId = opts.id ?? generateId();
 
-    const existingIds = this.hashIndex.get(contentHash);
-    if (existingIds && existingIds.length > 0) {
-      const existing = this.entries.get(existingIds[0]);
-      if (existing) {
-        const entry: StorageEntry = {
-          id: entryId,
-          contentHash,
-          sizeBytes: data.length,
-          mimeType: opts.mimeType,
-          name: opts.name,
-          tags: opts.tags,
-          createdAt: Date.now(),
-          accessedAt: Date.now(),
-          refCount: 1,
-        };
-        this.entries.set(entryId, entry);
-        this.hashIndex.get(contentHash)!.push(entryId);
-
-        this.alerts.push({
-          type: 'duplicate',
-          severity: 'info',
-          message: `Duplicate content detected: "${opts.name}" matches "${existing.name}" (${formatBytes(data.length)})`,
-          entryId,
-          entryName: opts.name,
-          details: { contentHash, existingId: existing.id, sizeBytes: data.length },
-          timestamp: Date.now(),
-        });
-
-        return entry;
-      }
-    }
-
     const entry: StorageEntry = {
       id: entryId,
       contentHash,
@@ -162,6 +129,26 @@ export class StorageGuardian {
     }
     this.hashIndex.get(contentHash)!.push(entryId);
 
+    // Duplicate detection: if this content hash already existed, alert.
+    const existingIds = this.hashIndex.get(contentHash)!;
+    if (existingIds.length > 1) {
+      const existing = this.entries.get(existingIds[0]);
+      if (existing && existing.id !== entryId) {
+        this.alerts.push({
+          type: 'duplicate',
+          severity: 'info',
+          message: `Duplicate content detected: "${opts.name}" matches "${existing.name}" (${formatBytes(data.length)})`,
+          entryId,
+          entryName: opts.name,
+          details: { contentHash, existingId: existing.id, sizeBytes: data.length },
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    // Budget: oversized-entry check (applies to EVERY entry, including
+    // duplicates — a duplicate still occupies an entry slot and counts
+    // toward total storage, so it must be flagged consistently).
     for (const budget of this.budgets) {
       if (budget.maxSingleEntryBytes && entry.sizeBytes > budget.maxSingleEntryBytes) {
         this.alerts.push({
