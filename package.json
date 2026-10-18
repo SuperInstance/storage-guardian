@@ -1,7 +1,7 @@
 {
   "name": "@superinstance/storage-guardian",
-  "version": "0.2.0",
-  "description": "Storage Guardian — duplicate detection, deduplication, storage budget enforcement, trend analysis, and alerting for JS/TS projects",
+  "version": "0.2.1",
+  "description": "Storage Guardian \u2014 duplicate detection, deduplication, storage budget enforcement, trend analysis, and alerting for JS/TS projects",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -45,7 +45,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SuperInstance/storage-guardian"
+    "url": "git+https://github.com/SuperInstance/storage-guardian.git"
   },
   "homepage": "https://github.com/SuperInstance/storage-guardian#readme",
   "bugs": {
